@@ -8,18 +8,79 @@ const Contact = () => {
     message: ''
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    // Clear status when user starts typing
+    if (submitStatus) {
+      setSubmitStatus(null);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Handle form submission logic here
+    
+    // Basic validation
+    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Please fill in all required fields (Name, Email, Message)'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: `${formData.title} ${formData.name}`.trim(),
+          email: formData.email,
+          subject: 'General Inquiry',
+          message: formData.message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitStatus({
+          type: 'success',
+          message: 'Thank you! Your message has been sent successfully. We will get back to you soon.'
+        });
+        // Reset form
+        setFormData({
+          title: 'Mr.',
+          name: '',
+          email: '',
+          message: ''
+        });
+      } else {
+        setSubmitStatus({
+          type: 'error',
+          message: data.message || 'Failed to send message. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Contact form error:', error);
+      setSubmitStatus({
+        type: 'error',
+        message: 'Network error. Please check your connection and try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -30,6 +91,13 @@ const Contact = () => {
         <div className="contact-form">
           <h3><em>Let's work together</em></h3>
 
+          {/* Status Message */}
+          {submitStatus && (
+            <div className={`status-message ${submitStatus.type}`}>
+              {submitStatus.type === 'success' ? '✅' : '❌'} {submitStatus.message}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-row">
               <label htmlFor="title">Title</label>
@@ -38,6 +106,7 @@ const Contact = () => {
                 name="title" 
                 value={formData.title}
                 onChange={handleInputChange}
+                disabled={isSubmitting}
               >
                 <option>Mr.</option>
                 <option>Ms.</option>
@@ -51,6 +120,8 @@ const Contact = () => {
                 placeholder="Enter your name"
                 value={formData.name}
                 onChange={handleInputChange}
+                disabled={isSubmitting}
+                required
               />
             </div>
 
@@ -63,6 +134,8 @@ const Contact = () => {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange}
+                disabled={isSubmitting}
+                required
               />
             </div>
 
@@ -72,11 +145,19 @@ const Contact = () => {
                 name="message"
                 value={formData.message}
                 onChange={handleInputChange}
+                disabled={isSubmitting}
+                required
               ></textarea>
             </div>
 
             <div className="form-row">
-              <button type="submit">Send Enquiry</button>
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className={isSubmitting ? 'submitting' : ''}
+              >
+                {isSubmitting ? 'Sending...' : 'Send Enquiry'}
+              </button>
             </div>
           </form>
 
